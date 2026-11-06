@@ -1,2 +1,73 @@
+name: Build APK
 
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: prakiraan-mancing-android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ekstrak zip proyek
+        working-directory: .
+        run: unzip -q prakiraan-mancing-android.zip
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Buat kerangka Android
+        run: |
+          flutter create --platforms=android --org id.geral --project-name prakiraan_mancing .
+          rm -rf test
+
+      - name: Izin, nama aplikasi, dan kunci tanda tangan
+        run: |
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <application#' "$MANIFEST"
+          sed -i 's#android:label="[^"]*"#android:label="Prakiraan Mancing"#' "$MANIFEST"
+          grep -n "uses-permission\|android:label" "$MANIFEST"
+          mkdir -p ~/.android
+          cp ci/debug.keystore ~/.android/debug.keystore
+
+      - run: flutter pub get
+
+      - name: Ikon aplikasi (boleh gagal)
+        continue-on-error: true
+        run: dart run flutter_launcher_icons
+
+      - name: Build APK
+        run: flutter build apk --release --build-name=1.0.${{ github.run_number }} --build-number=${{ github.run_number }}
+
+      - name: Beri nama APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk PrakiraanMancing.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PrakiraanMancing-apk
+          path: prakiraan-mancing-android/PrakiraanMancing.apk
+
+      - name: Terbitkan ke Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Prakiraan Mancing (terbaru)
+          body: Unduh PrakiraanMancing.apk, lalu pasang di Android.
+          files: prakiraan-mancing-android/PrakiraanMancing.apk
 .github/workflows/build-apk.yml
