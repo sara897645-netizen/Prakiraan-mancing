@@ -70,4 +70,4 @@ jobs:
           name: Prakiraan Mancing (terbaru)
           body: Unduh PrakiraanMancing.apk, lalu pasang di Android.
           files: prakiraan-mancing-android/PrakiraanMancing.apk
-.github/workflows/build-apk.yml
+
